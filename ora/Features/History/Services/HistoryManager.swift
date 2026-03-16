@@ -22,11 +22,13 @@ class HistoryManager: ObservableObject {
         container: TabContainer
     ) {
         let urlString = url.absoluteString
+        let containerId = container.id
 
-        // Check if a history record already exists for this URL
+        // Keep history entries scoped to a space so visits from different spaces
+        // do not overwrite each other or become unreachable from space filters.
         let descriptor = FetchDescriptor<History>(
-            predicate: #Predicate {
-                $0.urlString == urlString
+            predicate: #Predicate { history in
+                history.urlString == urlString && history.container?.id == containerId
             },
             sortBy: [.init(\.lastAccessedAt, order: .reverse)]
         )
@@ -55,32 +57,24 @@ class HistoryManager: ObservableObject {
 
     func search(_ text: String, activeContainerId: UUID) -> [History] {
         let trimmedText = text.trimmingCharacters(in: .whitespaces)
-
-        // Define the predicate for searching
-        let predicate: Predicate<History>
-        if trimmedText.isEmpty {
-            // If the search text is empty, return all records
-            predicate = #Predicate { _ in true }
-        } else {
-            // Case-insensitive substring search on url and title
-            predicate = #Predicate { history in
-                (history.urlString.localizedStandardContains(trimmedText) ||
-                    history.title.localizedStandardContains(trimmedText)
-                ) && history.container != nil && history.container!.id == activeContainerId
-            }
-        }
-
-        // Create fetch descriptor with predicate and sorting
         let descriptor = FetchDescriptor<History>(
-            predicate: predicate,
+            predicate: #Predicate { $0.container?.id == activeContainerId },
             sortBy: [SortDescriptor(\.lastAccessedAt, order: .reverse)]
         )
 
         do {
-            // Fetch matching history records
-            return try modelContext.fetch(descriptor)
+            let histories = try modelContext.fetch(descriptor)
+
+            guard !trimmedText.isEmpty else {
+                return histories
+            }
+
+            return histories.filter { history in
+                history.urlString.localizedStandardContains(trimmedText) ||
+                    history.title.localizedStandardContains(trimmedText)
+            }
         } catch {
-            logger.error("Error fetching history: \(error.localizedDescription)")
+            logger.error("Error fetching history: \(String(describing: error), privacy: .public)")
             return []
         }
     }
