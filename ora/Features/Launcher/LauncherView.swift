@@ -131,6 +131,10 @@ struct LauncherView: View {
                     NSEvent.removeMonitor(monitor)
                     mouseMonitor = nil
                 }
+                viewModel.reset()
+                input = ""
+                match = nil
+                isTextFieldFocused = false
             }
             .onChange(of: appState.showLauncher) { _, newValue in
                 isVisible = newValue

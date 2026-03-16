@@ -60,6 +60,7 @@ struct LauncherMain: View {
                 .focused(isFocused)
             }
             .animation(nil, value: match?.color)
+            .animation(nil, value: viewModel.suggestions.count)
             .padding(.horizontal, 8)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,6 +71,7 @@ struct LauncherMain: View {
                     suggestions: $viewModel.suggestions,
                     focusedElement: $viewModel.focusedElement
                 )
+                .animation(nil, value: viewModel.suggestions.count)
             }
         }
         .padding(8)
@@ -90,6 +92,7 @@ struct LauncherMain: View {
             color: Color.black.opacity(0.1),
             radius: 40, x: 0, y: 24
         )
+        .animation(.easeOut(duration: 0.12), value: viewModel.suggestions.count)
     }
 
     private func getPlaceholder(match: LauncherMatch?) -> String {
