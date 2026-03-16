@@ -83,7 +83,7 @@ struct URLBar: View {
 
     private func setupInlineLauncher() {
         suppressInitialSearch = true
-        if let tab = tabManager.activeTab {
+        if launcherInput.isEmpty, let tab = tabManager.activeTab {
             launcherInput = tab.url.absoluteString
         }
         launcherViewModel.searchEngineService.setTheme(theme)
@@ -119,18 +119,26 @@ struct URLBar: View {
     }
 
     private func cleanupInlineLauncher() {
-        isLauncherFocused = false
-        launcherInput = ""
-        launcherViewModel.suggestions = []
         if let monitor = mouseMonitor {
             NSEvent.removeMonitor(monitor)
             mouseMonitor = nil
         }
+        DispatchQueue.main.async {
+            guard !appState.isURLBarEditing else { return }
+            isLauncherFocused = false
+            mouseHasMoved = false
+            suppressInitialSearch = false
+            launcherInput = ""
+            launcherViewModel.reset()
+        }
     }
 
     private func dismissEditing() {
-        withAnimation(.easeOut(duration: 0.2)) {
-            appState.isURLBarEditing = false
+        DispatchQueue.main.async {
+            guard appState.isURLBarEditing else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                appState.isURLBarEditing = false
+            }
         }
     }
 
@@ -255,13 +263,6 @@ struct URLBar: View {
             )
             .onChange(of: tabManager.activeTab?.id) { _, _ in
                 if isEditing { dismissEditing() }
-            }
-            .onChange(of: appState.isURLBarEditing) { _, newValue in
-                if newValue {
-                    setupInlineLauncher()
-                } else {
-                    cleanupInlineLauncher()
-                }
             }
             .onChange(of: appState.showLauncher) { _, newValue in
                 // Dismiss URL bar editing if the center launcher is opened
@@ -393,6 +394,12 @@ struct URLBar: View {
                 dismissEditing()
                 return .handled
             }
+        }
+        .onAppear {
+            setupInlineLauncher()
+        }
+        .onDisappear {
+            cleanupInlineLauncher()
         }
         .frame(height: 30)
         .padding(.horizontal, 8)

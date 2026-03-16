@@ -35,7 +35,9 @@ struct BrowserWebContentView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            appState.isURLBarEditing = false
+                            DispatchQueue.main.async {
+                                appState.isURLBarEditing = false
+                            }
                         }
                         .transition(.opacity)
                 }

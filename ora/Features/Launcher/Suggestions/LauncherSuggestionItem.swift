@@ -132,8 +132,10 @@ struct LauncherSuggestionItem: View {
         .clipShape(ConditionallyConcentricRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture {
             suggestion.action()
-            appState.showLauncher = false
-            appState.isURLBarEditing = false
+            DispatchQueue.main.async {
+                appState.showLauncher = false
+                appState.isURLBarEditing = false
+            }
         }
         .onHover { hover in
             if hover, mouseHasMoved {
