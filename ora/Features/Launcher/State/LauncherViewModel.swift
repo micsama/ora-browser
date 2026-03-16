@@ -11,6 +11,7 @@ class LauncherViewModel: ObservableObject {
     var currentText: String = ""
 
     private let debouncer = Debouncer(delay: 0.2)
+    private var autoSuggestionRequestID = 0
 
     // Dependencies injected from the view layer
     private(set) var tabManager: TabManager?
@@ -48,9 +49,13 @@ class LauncherViewModel: ObservableObject {
         guard let tabManager, let historyManager else { return }
 
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+            invalidateAutoSuggestionRequests()
             suggestions = defaultSuggestions()
+            focusedElement = suggestions.first?.id ?? UUID()
             return
         }
+
+        let requestID = nextAutoSuggestionRequestID()
 
         let histories = historyManager.search(
             text,
@@ -66,12 +71,19 @@ class LauncherViewModel: ObservableObject {
         appendSearchWithDefaultEngineSuggestion(text)
 
         let insertIndex = suggestions.count
-        requestAutoSuggestions(text, insertAt: insertIndex)
+        requestAutoSuggestions(text, insertAt: insertIndex, requestID: requestID)
 
         appendHistorySuggestions(histories, itemsCount: &itemsCount)
         appendAISuggestionsIfNeeded(text)
 
         focusedElement = suggestions.first?.id ?? UUID()
+    }
+
+    func reset() {
+        invalidateAutoSuggestionRequests()
+        suggestions = []
+        focusedElement = UUID()
+        currentText = ""
     }
 
     func defaultSuggestions() -> [LauncherSuggestion] {
@@ -229,20 +241,32 @@ class LauncherViewModel: ObservableObject {
         )
     }
 
-    private func requestAutoSuggestions(_ text: String, insertAt: Int) {
+    private func requestAutoSuggestions(_ text: String, insertAt: Int, requestID: Int) {
         guard let tabManager else { return }
         let containerId = tabManager.activeContainer?.id
         debouncer.run { [weak self] in
             guard let self else { return }
+            let isCurrentRequest = await MainActor.run {
+                requestID == self.autoSuggestionRequestID && self.currentText == text
+            }
+            guard isCurrentRequest else { return }
+
             let searchEngine = await self.searchEngineService.getDefaultSearchEngine(
                 for: containerId
             )
             if let autoSuggestions = searchEngine?.autoSuggestions {
                 let searchSuggestions = await autoSuggestions(text)
                 await MainActor.run {
+                    guard requestID == self.autoSuggestionRequestID, self.currentText == text else {
+                        return
+                    }
+
                     var localCount = 0
+                    var existingTitles = Set(self.suggestions.map(\.title))
                     for searchSuggestion in searchSuggestions {
                         if localCount == 3 { break }
+                        if existingTitles.contains(searchSuggestion) { continue }
+
                         let insertIndex = insertAt + localCount
                         let suggestion = LauncherSuggestion(
                             type: .suggestedQuery,
@@ -254,11 +278,23 @@ class LauncherViewModel: ObservableObject {
                         } else {
                             self.suggestions.append(suggestion)
                         }
+                        existingTitles.insert(searchSuggestion)
                         localCount += 1
                     }
                 }
             }
         }
+    }
+
+    private func nextAutoSuggestionRequestID() -> Int {
+        autoSuggestionRequestID += 1
+        debouncer.cancel()
+        return autoSuggestionRequestID
+    }
+
+    private func invalidateAutoSuggestionRequests() {
+        autoSuggestionRequestID += 1
+        debouncer.cancel()
     }
 
     private func appendHistorySuggestions(_ histories: [History], itemsCount: inout Int) {
@@ -369,5 +405,10 @@ private class Debouncer {
         }
         workItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
+    func cancel() {
+        workItem?.cancel()
+        workItem = nil
     }
 }
