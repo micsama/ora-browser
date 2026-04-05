@@ -4,7 +4,6 @@ import SwiftUI
 enum SettingsTab: String, Hashable, CaseIterable {
     case general
     case spaces
-    case privacySecurity
     case passwords
     case shortcuts
     case searchEngines
@@ -13,7 +12,6 @@ enum SettingsTab: String, Hashable, CaseIterable {
         switch self {
         case .general: return "General"
         case .spaces: return "Spaces"
-        case .privacySecurity: return "Privacy"
         case .passwords: return "Passwords"
         case .shortcuts: return "Shortcuts"
         case .searchEngines: return "Search"
@@ -24,7 +22,6 @@ enum SettingsTab: String, Hashable, CaseIterable {
         switch self {
         case .general: return "gearshape"
         case .spaces: return "rectangle.3.group"
-        case .privacySecurity: return "lock.shield"
         case .passwords: return "key.horizontal"
         case .shortcuts: return "command"
         case .searchEngines: return "magnifyingglass"
@@ -37,8 +34,6 @@ enum SettingsTab: String, Hashable, CaseIterable {
             return "Browser defaults, app behavior, and software updates."
         case .spaces:
             return "Space-specific defaults and per-space data controls."
-        case .privacySecurity:
-            return "Tracking prevention, cookies, and privacy protections."
         case .passwords:
             return "Password manager integration, vault access, and autofill behavior."
         case .shortcuts:
@@ -76,6 +71,7 @@ struct SettingsContentView: View {
         NavigationSplitView {
             List(SettingsTab.allCases, id: \.self, selection: selection) { tab in
                 Label(tab.title, systemImage: tab.symbol)
+                    .tag(tab)
             }
             .navigationSplitViewColumnWidth(200)
             .padding(.top, 8)
@@ -94,8 +90,6 @@ struct SettingsContentView: View {
             GeneralSettingsView()
         case .spaces:
             SpacesSettingsView()
-        case .privacySecurity:
-            PrivacySecuritySettingsView()
         case .passwords:
             PasswordsSettingsView()
         case .shortcuts:
