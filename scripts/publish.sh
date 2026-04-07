@@ -111,7 +111,14 @@ step "Deploying appcast"
 cp appcast.xml /tmp/ora_appcast_deploy.xml
 CURRENT_BRANCH=$(git branch --show-current)
 
-git stash push -m "Stash before deploying appcast v$VERSION" 2>/dev/null || true
+STASH_CREATED=false
+STASH_BEFORE="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
+git stash push -m "Stash before deploying appcast v$VERSION" >/dev/null 2>&1 || true
+STASH_AFTER="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
+
+if [[ -n "$STASH_AFTER" && "$STASH_AFTER" != "$STASH_BEFORE" ]]; then
+    STASH_CREATED=true
+fi
 
 if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
     git fetch origin gh-pages
@@ -131,6 +138,8 @@ git diff --staged --quiet || git commit -m "chore(appcast): deploy v$VERSION"
 git push origin gh-pages
 
 git checkout "$CURRENT_BRANCH"
-git stash pop 2>/dev/null || true
+if [[ "$STASH_CREATED" == true ]]; then
+    git stash pop 2>/dev/null || true
+fi
 
 green "Published! Appcast: https://the-ora.github.io/browser/appcast.xml"
