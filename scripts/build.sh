@@ -66,21 +66,13 @@ if command -v xcbeautify >/dev/null 2>&1; then
         -configuration Release \
         -destination "platform=macOS" \
         -archivePath "$ARCHIVE_PATH" \
-        CODE_SIGN_STYLE=Manual \
-        CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
-        PROVISIONING_PROFILE_SPECIFIER="$DEVELOPER_ID_PROFILE" \
-        DEVELOPMENT_TEAM="$TEAM_ID" \
         2>&1 | xcbeautify
 else
     xcodebuild archive \
         -scheme ora \
         -configuration Release \
         -destination "platform=macOS" \
-        -archivePath "$ARCHIVE_PATH" \
-        CODE_SIGN_STYLE=Manual \
-        CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
-        PROVISIONING_PROFILE_SPECIFIER="$DEVELOPER_ID_PROFILE" \
-        DEVELOPMENT_TEAM="$TEAM_ID"
+        -archivePath "$ARCHIVE_PATH"
 fi
 
 [[ -d "$ARCHIVE_PATH" ]] || die "Archive failed — ${ARCHIVE_PATH} not found."
